@@ -316,12 +316,14 @@ if (__name__ == "__main__"):
                             "apt install": ["foo.txt"],
                             "make build": ["bar.txt"]}
     readline = LovelyReadline()
-    readline.init(test_wordlist, test_prefix_wordlist)
+    readline.init(test_wordlist, test_prefix_wordlist, exit_command="quit")
 
     while True:
         print(":>", end="")
         cmd = readline()
         if (cmd == ""):
             continue
+        elif (cmd =="quit"):
+            break
         else:
             print("cmd:", cmd)
