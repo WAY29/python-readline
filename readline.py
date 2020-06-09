@@ -1,8 +1,11 @@
-from sys import stdout, exc_info
-from traceback import print_exception
-from colorama import Back, Fore, init
 from itertools import chain
+from sys import exc_info, stdout
+from traceback import print_exception
+from typing import List, Tuple, Union
 
+from colorama import Back, Fore, init
+
+TUPLE_OR_LIST = Union[List, Tuple]
 init(autoreset=True)
 
 
@@ -102,19 +105,19 @@ class LovelyReadline:
         self.HISTORY_POINTER = 0
         self.FROM_HISTORY = False
         self._wordlist = {}
-        self._args_wordlist = {}
+        self._prefix_wordlist = {}
         self._exit_command = "quit"
 
-    def init(self, wordlist: dict, arg_wordlist: dict, exit_command: str = "quit"):
+    def init(self, wordlist: dict, prefix_wordlist: dict, exit_command: str = "quit"):
         self._wordlist = wordlist
-        self._args_wordlist = arg_wordlist
+        self._prefix_wordlist = prefix_wordlist
         self._exit_command = exit_command
 
     def get_wordlist(self) -> dict:
         return self._wordlist
 
-    def get_args_wordlist(self) -> dict:
-        return self._args_wordlist
+    def get_prefix_wordlist(self) -> dict:
+        return self._prefix_wordlist
 
     def get_history(self) -> list:
         return self.HISTORY
@@ -123,23 +126,24 @@ class LovelyReadline:
         self.HISTORY = []
         return True
 
-    def set_wordlist(self, wordlist: dict) -> bool:
-        self._wordlist = wordlist
-        return True
+    def add_prefix_wordlist(self, key: str, value: TUPLE_OR_LIST) -> bool:
+        if (isinstance(value, (list, tuple))):
+            self._prefix_wordlist[key] = value
+            return True
+        else:
+            return False
 
-    def set_args_wordlist(self, args_wordlist: dict) -> bool:
-        self._wordlist = args_wordlist
-        return True
-
-    def add_wordlist(self, name: str, value: dict) -> bool:
-        self._wordlist[name] = value
-        return True
+    def add_wordlist(self, key: str, value: TUPLE_OR_LIST) -> bool:
+        if (isinstance(value, (list, tuple))):
+            self._wordlist[key] = value
+            return True
+        else:
+            return False
 
     def __call__(self, other_delimiter: bytes = b"",) -> str:
         cmd = ''
         wordlist = self._wordlist
-        if ("arg_wordlist" not in wordlist):
-            wordlist["arg_wordlist"] = []
+        wordlist["prefix_wordlist"] = []
         end = False
         completion = False
         if (self.CONTINUE_POINTER is not None):
@@ -245,13 +249,15 @@ class LovelyReadline:
                         word = self.STDIN_STREAM.split(b" ")[-1]
                         if (other_delimiter):
                             word = word.split(other_delimiter)[-1]
-                        print("\n" + b"  ".join(word + last_word for last_word in history_line).decode())
+                        print("\n" + b"  ".join(word +
+                                                last_word for last_word in history_line).decode())
                         break
                 stream_len = len(self.STDIN_STREAM)
                 history_len = len(self.HISTORY)
                 remaining_len = len(remaining)
                 clean_len = old_stream_len + remaining_len
-                print("\b" * old_pointer + " " * clean_len + "\b" * clean_len, end="")  # 清空原本输入
+                print("\b" * old_pointer + " " * clean_len +
+                      "\b" * clean_len, end="")  # 清空原本输入
                 print(color.cyan(self.STDIN_STREAM.decode()), end="")  # 输出
                 if (remaining):
                     remaining = ""
@@ -270,15 +276,15 @@ class LovelyReadline:
                     continue
                 temp_history_lines = [line[stream_len:] for line in reversed(self.HISTORY) if (
                     line.startswith(self.STDIN_STREAM) and self.STDIN_STREAM != line)]
-                if (temp_history_lines and temp_history_lines[0]):  # 若有历史命令，输出剩余的部分
+                # 若有历史命令，输出剩余的部分
+                if (temp_history_lines and temp_history_lines[0]):
                     remaining = min(temp_history_lines, key=len)
                 stream_list = self.STDIN_STREAM.split(b" ")
-                command = stream_list[0].decode()
-                if (len(stream_list) > 1):  # 临时修改参数列表
-                    if (command in self._args_wordlist):
-                        arg_wordlist = self._args_wordlist.get(command, [])
-                        if (wordlist["arg_wordlist"] != arg_wordlist):
-                            wordlist["arg_wordlist"] = arg_wordlist
+                command = self.STDIN_STREAM.strip().decode()
+                if (command in self._prefix_wordlist):
+                    prefix_wordlist = self._prefix_wordlist.get(command, [])
+                    if (wordlist["prefix_wordlist"] != prefix_wordlist):
+                        wordlist["prefix_wordlist"] = prefix_wordlist
                 # 若有补全单词，输出剩余的部分
                 word = stream_list[-1]
                 if (other_delimiter):
@@ -297,8 +303,9 @@ class LovelyReadline:
                 if (remaining):
                     total_lines = temp_history_lines + temp_word_lines
                     less_bytes = get_min_string(total_lines).encode()
-                    stdout.write(remaining.decode() + "\b" * len(remaining))  # 输出补全提示
-                    if (less_bytes):  # 允许不全公共子串
+                    stdout.write(remaining.decode() + "\b" *
+                                 len(remaining))  # 输出补全提示
+                    if (less_bytes):  # 允许补全公共子串
                         history_line = self.STDIN_STREAM + less_bytes
                     elif (len(temp_word_lines) > 1):  # 多个候选词,保留输入流并返回
                         cmd = ''
@@ -318,15 +325,19 @@ class LovelyReadline:
         return cmd
 
 
-test_wordlist = {"command_wordlist": ["db_info", "db_test"]}
-test_args_wordlist = {"db_info": ["-a", "--all"], "db_test": ["-s", "--status"]}
-readline = LovelyReadline()
-readline.init(test_wordlist, test_args_wordlist)
+if (__name__ == "__main__"):
+    test_wordlist = {"command_wordlist": ["apt", "make"]}
+    test_prefix_wordlist = {"apt": ["install"],
+                            "make": ["build"],
+                            "apt install": ["foo.txt"],
+                            "make build": ["bar.txt"]}
+    readline = LovelyReadline()
+    readline.init(test_wordlist, test_prefix_wordlist)
 
-while True:
-    print(":>", end="")
-    cmd = readline()
-    if (cmd == ""):
-        continue
-    else:
-        print("cmd:", cmd)
+    while True:
+        print(":>", end="")
+        cmd = readline()
+        if (cmd == ""):
+            continue
+        else:
+            print("cmd:", cmd)
