@@ -319,11 +319,12 @@ if (__name__ == "__main__"):
     readline.init(test_wordlist, test_prefix_wordlist, exit_command="quit")
 
     while True:
-        print(":>", end="")
+        stdout.write(":>")
+        stdout.flush()
         cmd = readline()
         if (cmd == ""):
             continue
-        elif (cmd =="quit"):
+        elif (cmd == "quit"):
             break
         else:
             print("cmd:", cmd)
