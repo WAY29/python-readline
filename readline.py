@@ -3,51 +3,7 @@ from sys import exc_info, stdout
 from traceback import print_exception
 from typing import List, Tuple, Union
 
-from colorama import Back, Fore, init
-
 TUPLE_OR_LIST = Union[List, Tuple]
-init(autoreset=True)
-
-
-class Colored(object):
-    #  前景色:红色  背景色:默认
-    def red(self, s):
-        return Fore.RED + s + Fore.RESET
-
-    #  前景色:绿色  背景色:默认
-    def green(self, s):
-        return Fore.GREEN + s + Fore.RESET
-
-    #  前景色:黄色  背景色:默认
-    def yellow(self, s):
-        return Fore.YELLOW + s + Fore.RESET
-
-    #  前景色:蓝色  背景色:默认
-    def blue(self, s):
-        return Fore.BLUE + s + Fore.RESET
-
-    #  前景色:洋红色  背景色:默认
-    def magenta(self, s):
-        return Fore.MAGENTA + s + Fore.RESET
-
-    #  前景色:青色  背景色:默认
-    def cyan(self, s):
-        return Fore.CYAN + s + Fore.RESET
-
-    #  前景色:白色  背景色:默认
-    def white(self, s):
-        return Fore.WHITE + s + Fore.RESET
-
-    #  前景色:黑色  背景色:默认
-    def black(self, s):
-        return Fore.BLACK
-
-    #  前景色:白色  背景色:绿色
-    def white_green(self, s):
-        return Fore.WHITE + Back.GREEN + s + Fore.RESET + Back.RESET
-
-
-color = Colored()
 
 
 def get_min_string(wordlist):
@@ -84,8 +40,17 @@ try:
         else:
             return firstChar.encode()
 
+    def print_cyan(text, end="\n"):
+        stdout.write("\033[31m" + text + "\033[0m" + end)
+        stdout.flush()
+
+    def print_red(text, end="\n"):
+        stdout.write("\033[36m" + text + "\033[0m" + end)
+        stdout.flush()
+
 except ImportError:
     # Non-POSIX: Return msvcrt's (Windows') getch
+    from ctypes import windll
     from msvcrt import getch
 
     # Read arrow keys correctly
@@ -95,6 +60,26 @@ except ImportError:
             return {b"H": "up", b"P": "down", b"M": "right", b"K": "left", b"G": "Home", b"O": "End", b"R": "Ins", b"S": "Del", b"I": "PgUp", b"Q": "PgDn"}[getch()]
         else:
             return firstChar
+
+    def set_cmd_text_color(color):
+        std_out_handle = windll.kernel32.GetStdHandle(-11)
+        Bool = windll.kernel32.SetConsoleTextAttribute(std_out_handle, color)
+        return Bool
+
+    def resetColor():
+        set_cmd_text_color(0x0c | 0x0a | 0x09)
+
+    def print_cyan(text, end="\n"):
+        set_cmd_text_color(0x0b)
+        stdout.write(text + end)
+        stdout.flush()
+        resetColor()
+
+    def print_red(text, end="\n"):
+        set_cmd_text_color(0x0c)
+        stdout.write(text + end)
+        stdout.flush()
+        resetColor()
 
 
 class LovelyReadline:
@@ -231,12 +216,11 @@ class LovelyReadline:
                 elif(ch == b'\t'):  # \t
                     completion = True
                 elif(dch and ord(dch) == 4):  # ctrl+d
-                    print(color.cyan(self._exit_command + "\n"), end="")
+                    print_cyan(self._exit_command)
                     cmd = 'quit'
                     break
                 elif(dch and ord(dch) == 3):  # ctrl+c
-                    print(color.cyan('^C'))
-                    stdout.flush()
+                    print_cyan('^C')
                     break
                 if (completion):
                     completion = False
@@ -258,7 +242,7 @@ class LovelyReadline:
                 clean_len = old_stream_len + remaining_len
                 print("\b" * old_pointer + " " * clean_len +
                       "\b" * clean_len, end="")  # 清空原本输入
-                print(color.cyan(self.STDIN_STREAM.decode()), end="")  # 输出
+                print_cyan(self.STDIN_STREAM.decode(), end="")
                 if (remaining):
                     remaining = ""
                 if (end):  # 结束输入
@@ -315,8 +299,8 @@ class LovelyReadline:
                 stdout.write("\b" * (stream_len - pointer))
                 stdout.flush()
         except Exception:
-            print(color.red('Error'))
-            if 1:
+            print_red('Error')
+            if 0:
                 exc_type, exc_value, exc_tb = exc_info()
                 print_exception(exc_type, exc_value, exc_tb)
             cmd = ''
