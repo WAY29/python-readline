@@ -41,11 +41,11 @@ try:
             return firstChar.encode()
 
     def print_cyan(text, end="\n"):
-        stdout.write("\033[31m" + text + "\033[0m" + end)
+        stdout.write("\033[36m" + text + "\033[0m" + end)
         stdout.flush()
 
     def print_red(text, end="\n"):
-        stdout.write("\033[36m" + text + "\033[0m" + end)
+        stdout.write("\033[31m" + text + "\033[0m" + end)
         stdout.flush()
 
 except ImportError:
